@@ -61,7 +61,7 @@ def find_prop_opp(trackin_train,  # list of dictionaries for the training sample
                   train_images_without_noise,
                   test_images,
                   test_images_without_noise,
-                  topk=5,          # number of proponents/opponents to show
+                  topk=3,          # number of proponents/opponents to show
                   title=None
                   ):
 
@@ -110,59 +110,83 @@ def find_prop_opp(trackin_train,  # list of dictionaries for the training sample
             )
         )
     
-    fig = plt.figure(figsize=(6.4*6, 4.8*4+0.8*2))
+    if topk == 3:
+        fig = plt.figure(figsize=(6.4*4, 4.8*2))
 
-    print(f'Test image [{idx}]:')
-    ax = plt.subplot(4, 6, 7)
-    plot_image(ax, test_images[idx], title=f'Real: [pt={trackin_test["labels"][idx][0]:.3f}, eta={trackin_test["labels"][idx][1]:.3f}]\nPredicted: [pt={trackin_test["preds"][idx][0]:.3f}, eta={trackin_test["preds"][idx][1]:.3f}]', fontsize=20)
-    ax = plt.subplot(4, 6, 13)
-    if test_images_without_noise is not None:
-        plot_image(ax, test_images_without_noise[idx], title='Denoised image', fontsize=20)
+        print(f'Test image [{idx}]:')
+        ax = plt.subplot(2, 4, 1)
+        pos = ax.get_position()
+        new_pos = [pos.x0 - 0.05, pos.y0 - 0.3, pos.width, pos.height]
+        ax.set_position(new_pos)
+        if test_images_without_noise is not None:
+            rows, cols = np.where(test_images_without_noise[idx] != 0)
+        I = np.dstack([test_images[idx], test_images[idx], test_images[idx]]).astype(np.int16)
+        I[np.where(I == 0)[0], np.where(I == 0)[1], :] = [255, 255, 255]
+        if test_images_without_noise is not None:
+            I[rows, cols, :] = [255, 0, 0]
+        plot_image(ax, I, title=f'Input image\n\nReal: [$p_T$={trackin_test["labels"][idx][0]:.1f} GeV, $\\eta$={trackin_test["labels"][idx][1]:.2f}]\nPredicted: [$p_T$={trackin_test["preds"][idx][0]:.1f} GeV, $\\eta$={trackin_test["preds"][idx][1]:.2f}]', grayscale=False, fontsize=20)
+        # ax = plt.subplot(2, 4, 5)
+        # if test_images_without_noise is not None:
+        #     plot_image(ax, test_images_without_noise[idx], title='Denoised image\n\n\n', fontsize=20)
+        # else:
+        #     denoised_input_img = np.zeros((9, 384))
+        #     denoised_input_img[0][0] = 1
+        #     plot_image(ax, denoised_input_img, title='Denoised image\n\n\n', fontsize=20)
+
+        idxs_prop = []
+        for p, prop in enumerate(proponents):
+            idxs_prop.append(prop[6])
+            ax = plt.subplot(2, 4, p+2)
+            rows, cols = np.where(train_images_without_noise[prop[0]] != 0)
+            I = np.dstack([train_images[prop[0]], train_images[prop[0]], train_images[prop[0]]]).astype(np.int16)
+            I[np.where(I == 0)[0], np.where(I == 0)[1], :] = [255, 255, 255]
+            I[rows, cols, :] = [255, 0, 0]
+
+            if p == 1:
+                tit = f'Proponents\n\nReal: [$p_T$={prop[2][0]:.1f} GeV, $\\eta$={prop[2][1]:.2f}]\nPredicted: [$p_T$={prop[1][0]:.1f} GeV, $\\eta$={prop[1][1]:.2f}]' # \nInfluence: {prop[3]:.1f}'
+            else:
+                tit = f'Real: [$p_T$={prop[2][0]:.1f} GeV, $\\eta$={prop[2][1]:.2f}]\nPredicted: [$p_T$={prop[1][0]:.1f} GeV, $\\eta$={prop[1][1]:.2f}]' # \nInfluence: {prop[3]:.1f}'
+            plot_image(ax,
+                    I,
+                    title=tit,
+                    grayscale=False,
+                    fontsize=20)
+
+        idxs_opp = []
+        for o, opp in enumerate(opponents):
+            idxs_opp.append(opp[6])
+            ax = plt.subplot(2, 4, o+6)
+            pos = ax.get_position()
+            new_pos = [pos.x0, pos.y0 - 0.2, pos.width, pos.height]
+            ax.set_position(new_pos)
+            rows, cols = np.where(train_images_without_noise[opp[0]] != 0)
+            I = np.dstack([train_images[opp[0]], train_images[opp[0]], train_images[opp[0]]]).astype(np.int16)
+            I[np.where(I == 0)[0], np.where(I == 0)[1], :] = [255, 255, 255]
+            I[rows, cols, :] = [255, 0, 0]
+
+            if o == 1:
+                tit = f'Opponents\n\nReal: [$p_T$={opp[2][0]:.1f} GeV, $\\eta$={opp[2][1]:.2f}]\nPredicted: [$p_T$={opp[1][0]:.1f} GeV, $\\eta$={opp[1][1]:.2f}]' # \nInfluence: {opp[3]:.1f}'
+            else:
+                tit = f'Real: [$p_T$={opp[2][0]:.1f} GeV, $\\eta$={opp[2][1]:.2f}]\nPredicted: [$p_T$={opp[1][0]:.1f} GeV, $\\eta$={opp[1][1]:.2f}]' # \nInfluence: {opp[3]:.1f}'
+            plot_image(ax,
+                    I,
+                    title=tit,
+                    grayscale=False,
+                    fontsize=20)
+
+        # line = plt.Line2D([0.305, 0.305], [0, 1], transform=fig.transFigure, color="black")
+        # fig.add_artist(line)
+        # line = plt.Line2D([0.305, 0.9], [0.505, 0.505], transform=fig.transFigure, color="black")
+        # fig.add_artist(line)
+        # plt.subplots_adjust(hspace=0.8)
+
+        if title is not None:
+            plt.savefig(title, dpi=300, bbox_inches='tight')
+
+        plt.show()
+
+        print('Proponents indices: ', idxs_prop)
+        print('Opponents indices: ', idxs_opp)
+    
     else:
-        denoised_input_img = np.zeros((9, 384))
-        denoised_input_img[0][0] = 1
-        plot_image(ax, denoised_input_img, title='Denoised image', fontsize=20)
-
-    idxs_prop = []
-    for p, prop in enumerate(proponents):
-        idxs_prop.append(prop[6])
-        ax = plt.subplot(4, 6, p+2 if p < 5 else p+3)
-        rows, cols = np.where(train_images_without_noise[prop[0]] != 0)
-        I = np.dstack([train_images[prop[0]], train_images[prop[0]], train_images[prop[0]]]).astype(np.int16)
-        I[np.where(I == 0)[0], np.where(I == 0)[1], :] = [255, 255, 255]
-        I[rows, cols, :] = [255, 0, 0]
-
-        plot_image(ax,
-                   I,
-                   title=f'Proponent {p+1}\nReal: [pt={prop[2][0]:.3f}, eta={prop[2][1]:.3f}]\nPredicted: [pt={prop[1][0]:.3f}, eta={prop[1][1]:.3f}]\nInfluence: {prop[3]:.3f}',
-                   grayscale=False,
-                   fontsize=20)
-
-    idxs_opp = []
-    for o, opp in enumerate(opponents):
-        idxs_opp.append(opp[6])
-        ax = plt.subplot(4, 6, o+14 if o < 5 else o+15)
-        rows, cols = np.where(train_images_without_noise[opp[0]] != 0)
-        I = np.dstack([train_images[opp[0]], train_images[opp[0]], train_images[opp[0]]]).astype(np.int16)
-        I[np.where(I == 0)[0], np.where(I == 0)[1], :] = [255, 255, 255]
-        I[rows, cols, :] = [255, 0, 0]
-
-        plot_image(ax,
-                   I,
-                   title=f'Opponent {o+1}\nReal: [pt={opp[2][0]:.3f}, eta={opp[2][1]:.3f}]\nPredicted: [pt={opp[1][0]:.3f}, eta={opp[1][1]:.3f}]\nInfluence: {opp[3]:.3f}',
-                   grayscale=False,
-                   fontsize=20)
-
-    line = plt.Line2D([0.242, 0.242], [0.1, 0.95], transform=fig.transFigure, color="black")
-    fig.add_artist(line)
-    line = plt.Line2D([0.242, 0.9], [0.515, 0.515], transform=fig.transFigure, color="black")
-    fig.add_artist(line)
-    plt.subplots_adjust(hspace=0.8)
-
-    if title is not None:
-        plt.savefig(title, dpi=300, bbox_inches='tight')
-
-    plt.show()
-
-    print('Proponents indices: ', idxs_prop)
-    print('Opponents indices: ', idxs_opp)
+        print(f'The visualization is designed for topk=3. You have specified topk={topk}.')

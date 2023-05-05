@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import ConnectionPatch
 import pandas as pd
 import seaborn as sns
+from matplotlib.colors import TwoSlopeNorm
+import tensorflow as tf
 
 def plot_image(ax, image, title = '', grayscale=True, label=True, fontsize=None, save=False):
     im = ax.imshow(image < 0.5 if grayscale else image, aspect='auto', extent=(0, 384, 0, 9), cmap=plt.get_cmap('gray') if grayscale else None, vmin=0 if image.dtype == 'int8' else None, interpolation='none')
@@ -53,7 +55,7 @@ def plot_history(history):
     plt.show()
 
     
-def plot_cm(df: pd.DataFrame):
+def plot_cm(df: pd.DataFrame, norm=True, save=True):
     tp_index = []
     tn_index = []
     fp_index = []
@@ -73,16 +75,25 @@ def plot_cm(df: pd.DataFrame):
         else:
             fn_index.append(i)
 
-    cfm = [[len(tp_index), len(fn_index)],
-            [len(fp_index), len(tn_index)]]
+    if norm:
+        len_row1 = len(tp_index) + len(fn_index)
+        len_row2 = len(fp_index) + len(tn_index)
+        cfm = [[len(tp_index) / len_row1, len(fn_index) / len_row1],
+               [len(fp_index) / len_row2, len(tn_index) / len_row2]]
+    else:
+        cfm = [[len(tp_index), len(fn_index)],
+                [len(fp_index), len(tn_index)]]
 
-    classes = ["pt_true > 15", "pt_true < 15"]
-    columns = ["pt_pred > 15", "pt_pred < 15"]
+    classes = ["$p_T$ > 15 GeV", "$p_T$ < 15 GeV"]
+    columns = ["$\\hat{p}_T$ > 15 GeV", "$\\hat{p}_T$ < 15 GeV"]
 
     df_cfm = pd.DataFrame(cfm, index = classes, columns = columns)
     plt.figure(figsize = (8,6))
-    cm_plot = sns.heatmap(df_cfm, annot=True, cmap='Blues', fmt='d', linewidths=0.5, linecolor='black')
+    cm_plot = sns.heatmap(df_cfm, annot=True, cmap='Blues', fmt='.2f' if norm else 'd', linewidths=0.5, linecolor='black', annot_kws={"size": 17})
 
+    if save:
+        cm_plot.figure.savefig('confusion_matrix.jpg', dpi=300, bbox_inches='tight')
+        
     return tp_index, fn_index, fp_index, tn_index, cm_plot
 
 
@@ -153,32 +164,44 @@ def plot_explanation(image, denoised_img, ram_eta, ram_pt, ig, sg, labels, predi
 
     # 3)
     plt.subplot(2, 5, 2)
-    plt.imshow(ram_eta, aspect='auto', extent=(0, 384, 0, 9), cmap='jet', interpolation='none')
-    plt.colorbar()
-    plt.title('RAM for feature eta', fontsize=17)
+    vmin = ram_eta.min()
+    vmax = ram_eta.max()
+    norm_eta = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+    plt.imshow(ram_eta, aspect='auto', extent=(0, 384, 0, 9), cmap='coolwarm', norm=norm_eta, interpolation='none')
+    plt.colorbar().set_ticks([])
+    plt.title('RAM for feature $\\eta$', fontsize=17)
     plt.xlabel('η index')
     plt.ylabel('Layer index')
 
     # 4)
     plt.subplot(2, 5, 3)
-    plt.imshow(ram_pt, aspect='auto', extent=(0, 384, 0, 9), cmap='jet', interpolation='none')
-    plt.colorbar()
-    plt.title('RAM for feature pt', fontsize=17)
+    vmin = ram_pt.min()
+    vmax = ram_pt.max()
+    norm_pt = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+    plt.imshow(ram_pt, aspect='auto', extent=(0, 384, 0, 9), cmap='coolwarm', norm=norm_pt, interpolation='none')
+    plt.colorbar().set_ticks([])
+    plt.title('RAM for feature $p_T$', fontsize=17)
     plt.xlabel('η index')
     plt.ylabel('Layer index')
 
     # 5)
     plt.subplot(2, 5, 4)
-    plt.imshow(ig, aspect='auto', extent=(0, 384, 0, 9), cmap='jet', interpolation='none')
-    plt.colorbar()
+    vmin = tf.reduce_min(ig)
+    vmax = tf.reduce_max(ig)
+    norm_ig = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+    plt.imshow(ig, aspect='auto', extent=(0, 384, 0, 9), cmap='coolwarm', norm=norm_ig, interpolation='none')
+    plt.colorbar().set_ticks([])
     plt.title('Integrated Gradients', fontsize=17)
     plt.xlabel('η index')
     plt.ylabel('Layer index')
 
     # 6)
     plt.subplot(2, 5, 5)
-    plt.imshow(sg, aspect='auto', extent=(0, 384, 0, 9), cmap='jet', interpolation='none')
-    plt.colorbar()
+    vmin = tf.reduce_min(sg)
+    vmax = tf.reduce_max(sg)
+    norm_sg = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+    plt.imshow(sg, aspect='auto', extent=(0, 384, 0, 9), cmap='coolwarm', norm=norm_sg, interpolation='none')
+    plt.colorbar().set_ticks([])
     plt.title('SmoothGrad', fontsize=17)
     plt.xlabel('η index')
     plt.ylabel('Layer index')
@@ -186,39 +209,39 @@ def plot_explanation(image, denoised_img, ram_eta, ram_pt, ig, sg, labels, predi
     # overlappings
     plt.subplot(2, 5, 7)
     plt.imshow(image < 0.5, aspect='auto', extent=(0, 384, 0, 9), cmap=plt.get_cmap('gray'), alpha=0.5, interpolation='none')
-    plt.imshow(ram_eta, aspect='auto', extent=(0, 384, 0, 9), cmap='jet', alpha=0.5, interpolation='none')
-    plt.colorbar()
-    plt.title('Superimposed image and RAM - eta', fontsize=17)
+    plt.imshow(ram_eta, aspect='auto', extent=(0, 384, 0, 9), cmap='coolwarm', alpha=0.5, norm=norm_eta,interpolation='none')
+    plt.colorbar().set_ticks([])
+    plt.title('Superimposed image and RAM - $\\eta$', fontsize=17)
     plt.xlabel('η index')
     plt.ylabel('Layer index')
 
     plt.subplot(2, 5, 8)
     plt.imshow(image < 0.5, aspect='auto', extent=(0, 384, 0, 9), cmap=plt.get_cmap('gray'), alpha=0.5, interpolation='none')
-    plt.imshow(ram_pt, aspect='auto', extent=(0, 384, 0, 9), cmap='jet', alpha=0.5, interpolation='none')
-    plt.colorbar()
-    plt.title('Superimposed image and RAM - pt', fontsize=17)
+    plt.imshow(ram_pt, aspect='auto', extent=(0, 384, 0, 9), cmap='coolwarm', alpha=0.5, norm=norm_pt, interpolation='none')
+    plt.colorbar().set_ticks([])
+    plt.title('Superimposed image and RAM - $p_T$', fontsize=17)
     plt.xlabel('η index')
     plt.ylabel('Layer index')
 
     plt.subplot(2, 5, 9)
     plt.imshow(image < 0.5, aspect='auto', extent=(0, 384, 0, 9), cmap=plt.get_cmap('gray'), alpha=0.5, interpolation='none')
-    plt.imshow(ig, aspect='auto', extent=(0, 384, 0, 9), cmap='jet', alpha=0.5, interpolation='none')
-    plt.colorbar()
+    plt.imshow(ig, aspect='auto', extent=(0, 384, 0, 9), cmap='coolwarm', alpha=0.5, norm=norm_ig, interpolation='none')
+    plt.colorbar().set_ticks([])
     plt.title('Superimposed image and IG', fontsize=17)
     plt.xlabel('η index')
     plt.ylabel('Layer index')
 
     plt.subplot(2, 5, 10)
     plt.imshow(image < 0.5, aspect='auto', extent=(0, 384, 0, 9), cmap=plt.get_cmap('gray'), alpha=0.5, interpolation='none')
-    plt.imshow(sg, aspect='auto', extent=(0, 384, 0, 9), cmap='jet', alpha=0.5, interpolation='none')
-    plt.colorbar()
+    plt.imshow(sg, aspect='auto', extent=(0, 384, 0, 9), cmap='coolwarm', alpha=0.5, norm=norm_sg, interpolation='none')
+    plt.colorbar().set_ticks([])
     plt.title('Superimposed image and SG', fontsize=17)
     plt.xlabel('η index')
     plt.ylabel('Layer index')
 
-    plt.suptitle(f'Real: [pt={labels[0]:.3f}, eta={labels[1]:.3f}] Predicted: [pt={predictions[0]:.3f}, eta={predictions[1]:.3f}]', fontsize=25)
+    plt.suptitle(f'Real: [$p_T$={labels[0]:.1f} GeV, $\\eta$={labels[1]:.2f}] Predicted: [$p_T$={predictions[0]:.1f} GeV, $\\eta$={predictions[1]:.2f}]', fontsize=25)
 
     if save:
-        plt.savefig('explanation_' + str(index) + '.jpg', dpi=300, bbox_inches='tight')
+        plt.savefig('attribution_' + str(index) + '.jpg', dpi=300, bbox_inches='tight')
 
     plt.show()

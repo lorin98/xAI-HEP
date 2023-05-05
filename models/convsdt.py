@@ -9,6 +9,7 @@ from typing import Optional
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import ConnectionPatch, Patch
+from matplotlib.colors import TwoSlopeNorm
 
 from utils.metrics import spread_pt, efficiency_pt
 from utils.plot import plot_image, add_arrow
@@ -263,11 +264,14 @@ def explain_image(model, input_img, label_pt, label_eta, denoised_input_img:Opti
                 if type(layer) == nn.Conv2d:
                     conv_layers.append(layer)
 
-    fig = plt.figure(figsize=(64, 64//3))
-    gs = GridSpec(7, 32*2, height_ratios=[1, 1, 1, 1, 1, 0.5, 0.5])
+    fig = plt.figure(figsize=(64, 70//3))
+    gs = GridSpec(7+4, 32*2, height_ratios=[1, 1, 0.15, 1, 0.15, 1, 0.15, 1, 0.15, 0.5, 0.5])
 
     axes = []
-    ax0 = fig.add_subplot(gs[0:4])
+    ax0 = fig.add_subplot(gs[30:34])
+    pos = ax0.get_position()
+    new_pos = [pos.x0, pos.y0 + 0.025, pos.width, pos.height]
+    ax0.set_position(new_pos)
     axes.append(ax0)
 
     plot_image(ax0, input_img.squeeze(), title='Input image', fontsize=25)
@@ -289,10 +293,19 @@ def explain_image(model, input_img, label_pt, label_eta, denoised_input_img:Opti
     for i in range(len(processed)):
         ax = fig.add_subplot(gs[10*(i+1):10*(i+1)+4])
         axes.append(ax)
-        plot_image(axes[i+1], processed[i], title='Conv '+str(i), grayscale=False, label=False, fontsize=25)
-        p_rows, p_cols = axes[i].get_images()[0].get_array().shape
-        c_rows, c_cols = axes[i+1].get_images()[0].get_array().shape
-        add_arrow(axes[i], axes[i+1], (c_cols//4, 5), (p_cols//2, 5), color='cyan', lw=5)
+        plt.axis('off')
+        # plot_image(axes[i+1], processed[i], title='Conv '+str(i), grayscale=False, label=False, fontsize=25)
+        # vmin = processed[i].min()
+        # vmax = processed[i].max()
+        # norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+        # axes[i+1].imshow(processed[i], aspect='auto', extent=(0, 384, 0, 9), cmap=plt.get_cmap('seismic'), norm=norm, interpolation='none')
+        # axes[i+1].set_title('Conv '+str(i), fontsize=25)
+        # axes[i+1].set_xticks([])
+        # axes[i+1].set_yticks([])
+
+        # p_rows, p_cols = axes[i].get_images()[0].get_array().shape
+        # c_rows, c_cols = axes[i+1].get_images()[0].get_array().shape
+        # add_arrow(axes[i], axes[i+1], (c_cols//4, 5), (p_cols//2, 5), color='cyan', lw=5)
 
     # Collect model parameters for plotting
     kernels = dict()
@@ -339,22 +352,31 @@ def explain_image(model, input_img, label_pt, label_eta, denoised_input_img:Opti
         tree_images.append(kernel_image)
 
     tree_pos = [94,
-                148, 169,
-                204, 216, 228, 240,
-                263, 270, 277, 284, 291, 298, 305, 312,
-                322, 326, 330, 334, 338, 342, 346, 350, 354, 358, 362, 366, 370, 374, 378, 382]
+                142+64, 174+64,
+                198+64*2, 214+64*2, 230+64*2, 246+64*2,
+                258+64*3, 266+64*3, 274+64*3, 282+64*3, 290+64*3, 298+64*3, 306+64*3, 314+64*3,
+                321+64*4, 325+64*4, 329+64*4, 333+64*4, 337+64*4, 341+64*4, 345+64*4, 349+64*4, 353+64*4, 357+64*4, 361+64*4, 365+64*4, 369+64*4, 373+64*4, 377+64*4, 381+64*4]
     for i in range(len(tree_images)):
         j = 4 if i < 15 else 2
         ax = fig.add_subplot(gs[tree_pos[i]:tree_pos[i]+j])
-        if i == 0:
-            p_rows, p_cols = axes[i].get_images()[0].get_array().shape
-            c_rows, c_cols = axes[i+1].get_images()[0].get_array().shape
-            add_arrow(axes[-1], ax, (c_cols//2, 7), (p_cols//2, 5), color='orange', lw=7)
+        # if i == 0:
+        #     p_rows, p_cols = axes[i].get_images()[0].get_array().shape
+        #     c_rows, c_cols = axes[i+1].get_images()[0].get_array().shape
+        #     add_arrow(axes[-1], ax, (c_cols//2, 7), (p_cols//2, 5), color='orange', lw=7)
         axes.append(ax)
-        im = plot_image(axes[-1], tree_images[i], title='node '+str(i), grayscale=False, label=False, fontsize=20)
+        
+        # im = plot_image(axes[-1], tree_images[i], title='node '+str(i), grayscale=False, label=False, fontsize=20)
+        vmin = tree_images[i].min()
+        vmax = tree_images[i].max()
+        norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+        im = axes[-1].imshow(tree_images[i], aspect='auto', extent=(0, 384, 0, 9), cmap=plt.get_cmap('seismic'), norm=norm, interpolation='none')
+        axes[-1].set_title('node '+str(i), fontsize=20)
+        axes[-1].set_xticks([])
+        axes[-1].set_yticks([])
+
         if i < 15:
             cbar = plt.colorbar(im, cax=fig.add_subplot(gs[tree_pos[i]+j]))
-            # cbar.set_ticks([])
+            cbar.set_ticks([])
         # axes[-1].text(tree_images[i].shape[1]+20, tree_images[i].shape[0]//2,
         #               f'prob:\n{path_probs[i]*100:.2f}%',
         #               weight='bold' if str(i) in path else None)
@@ -362,13 +384,13 @@ def explain_image(model, input_img, label_pt, label_eta, denoised_input_img:Opti
     preds_pt = np.array([l[0].detach().numpy() for l in leaves.values()]) * std + mean
     preds_eta = np.array([l[1].detach().numpy() for l in leaves.values()])
     mu_list = model.tree.mu[0]
-    c = 384
+    c = 384+64*4
     for i in range(len(preds_pt)):
         pt = preds_pt[i]
         eta = preds_eta[i]
         mu = mu_list[i] * 100.
         ax = fig.add_subplot(gs[c])
-        ax.text(0.5, -0.15, f'{mu:.2f}%\n{pt:.3f}\n{eta:.3f}', fontsize=25)
+        ax.text(0.5, -0.15, f'{mu:.2f}%\n{pt:.1f}\n{eta:.2f}', fontsize=25)
         ax.axis('off')
         c += 2
         axes.append(ax)
@@ -377,42 +399,52 @@ def explain_image(model, input_img, label_pt, label_eta, denoised_input_img:Opti
         left_child = 2 * (i - 4) + 1
         right_child = 2 * (i - 4) + 2
         if i >= 19:
+            p_rows, p_cols = axes[i].get_images()[0].get_array().shape
             xA, yA = 1, 0.85
             color = 'green' if str(i-4) in path and str(left_child) in path else 'red'
-            add_arrow(axes[i], axes[left_child+4], (xA, yA), (p_cols//2, 5), color=color)
+            lw = 5 if color == 'green' else 2.5
+            add_arrow(axes[i], axes[left_child+4], (xA, yA), (p_cols//2, 0), color=color, lw=lw)
             color = 'green' if str(i-4) in path and str(right_child) in path else 'red'
-            add_arrow(axes[i], axes[right_child+4], (xA, yA), (p_cols//2, 5), color=color)
+            lw = 5 if color == 'green' else 2.5
+            add_arrow(axes[i], axes[right_child+4], (xA, yA), (p_cols//2, 0), color=color, lw=lw)
         else:
             p_rows, p_cols = axes[i].get_images()[0].get_array().shape
             c_rows, c_cols = axes[left_child+4].get_images()[0].get_array().shape
             color = 'green' if str(i-4) in path and str(left_child) in path else 'red'
-            add_arrow(axes[i], axes[left_child+4], (c_cols//2, 5), (p_cols//2, 5), color=color)
+            lw = 5 if color == 'green' else 2.5
+            add_arrow(axes[i], axes[left_child+4], (c_cols, 9), (p_cols//2, 0), color=color, lw=lw)
             c_rows, c_cols = axes[right_child+4].get_images()[0].get_array().shape
             color = 'green' if str(i-4) in path and str(right_child) in path else 'red'
-            add_arrow(axes[i], axes[right_child+4], (c_cols//2, 5), (p_cols//2, 5), color=color)
+            lw = 5 if color == 'green' else 2.5
+            add_arrow(axes[i], axes[right_child+4], (0, 9), (p_cols//2, 0), color=color, lw=lw)
 
     if denoised_input_img is not None:
-        ax128 = fig.add_subplot(gs[128:132])
-        plot_image(ax128, denoised_input_img, title='Denoised image', fontsize=25)
-        p_rows, p_cols = axes[0].get_images()[0].get_array().shape
-        c_rows, c_cols = ax128.get_images()[0].get_array().shape
-        add_arrow(axes[0], ax128, (c_cols//2, 7), (p_cols//2, 5), color='purple')
+        axden = fig.add_subplot(gs[36:40])
+        plot_image(axden, denoised_input_img, title='Denoised image', fontsize=25)
+        pos = axden.get_position()
+        new_pos = [pos.x0, pos.y0 + 0.025, pos.width, pos.height]
+        axden.set_position(new_pos)
+        # p_rows, p_cols = axes[0].get_images()[0].get_array().shape
+        # c_rows, c_cols = axden.get_images()[0].get_array().shape
+        # add_arrow(axes[0], axden, (c_cols//2, 7), (p_cols//2, 5), color='purple')
 
     # Legend
-    ax32 = fig.add_subplot(gs[54:70])
-    ax32.legend(handles=[Patch(color='cyan', label='Convolution'),
-                         Patch(color='purple', label='Denoising'),
-                         Patch(color='orange', label='Input to SDT'),
-                         Patch(color='green', label='Maximum probability path'),
-                         Patch(color='red', label='Secondary path')],
-                prop={'size': 28})
-    ax32.axis('off')
+    # ax32 = fig.add_subplot(gs[54:70])
+    # ax32.legend(handles=[
+    #                      # Patch(color='cyan', label='Convolution'),
+    #                      # Patch(color='purple', label='Denoising'),
+    #                      # Patch(color='orange', label='Convolutions'),
+    #                      Patch(color='green', label='Maximum probability path'),
+    #                      Patch(color='red', label='Secondary path')
+    #                      ],
+    #             prop={'size': 28})
+    # ax32.axis('off')
     
     # Output also the real and predicted values
     label_pt = label_pt * std + mean
     pred_pt = out['pred_pt'].detach().numpy() * std + mean
     pred_eta = out['pred_eta'].detach().numpy()
-    plt.suptitle(f'Real: [pt={label_pt.numpy():.3f}, eta={label_eta.numpy():.3f}] Predicted: [pt={pred_pt[0]:.3f}, eta={pred_eta[0]:.3f}]', fontsize=50)
+    plt.suptitle(f'Real: [$p_T$={label_pt.numpy():.1f} GeV, $\\eta$={label_eta.numpy():.2f}] Predicted: [$p_T$={pred_pt[0]:.1f} GeV, $\\eta$={pred_eta[0]:.2f}]', fontsize=50)
 
     if title is not None:
         plt.savefig(title, dpi=300, bbox_inches='tight')
