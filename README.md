@@ -2,6 +2,8 @@
 
 The main goal of our work is to provide **Explainable Artificial Intelligence (xAI)** techniques to understand model's predictions and decisions. We have developed several techniques for interpretability based on different approaches and explored them in the related notebooks. You can find below a brief description of each method with some results attached therein.
 
+**EDIT:** This work has been published as a scientific paper on [Springer Nature](https://www.springernature.com/gp#)'s journal, [Computing and Software for Big Science](https://www.springer.com/journal/41781). You can find the complete article [here](https://link.springer.com/article/10.1007/s41781-023-00102-z).
+
 ## Dataset
 
 The dataset is composed by binary gray-scaled images representing muonic patterns catched into a detector. They are mainly formed by 0-valued pixels with few lit 1-valued pixels, corresponding to the detected movement of the particle or to noise due to artifacts in the machine.
@@ -61,3 +63,8 @@ In ```xai_convergence.ipynb```, the user is free to test all these methods on th
 ## Authors 
 - Lorenzo Nicoletti
 - Leandro Maglianella
+
+## Cite
+You can cite us with:
+
+Maglianella, L., Nicoletti, L., Giagu, S. et al. Convergent Approaches to AI Explainability for HEP Muonic Particles Pattern Recognition. Comput Softw Big Sci 7, 8 (2023). https://doi.org/10.1007/s41781-023-00102-z
